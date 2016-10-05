@@ -1,929 +1,892 @@
-#include "matrix.h"
+#include "matrix.hpp"
+#include <new>
+#include <cstddef>
 
-matrix::matrix()
-{
-    //Set p_mat to null
-  p_mat=NULL;
+/**
+ * Default constructor, creates a matrix of order 0x0
+ */
+matrix::matrix(){
 
-  //Order = 0x0
-  row=0;
-  column=0;
+	resetOrder();
 }
-//End of matrix()
 
 
+/**
+ * Creates matrix of order m x n. If invalid order is passed creates a 0x0 matrix
+ * throws: ALLOCATION_FAILURE
+ */
+matrix::matrix(int rhsRow, int rhsColumn) throw(int){
 
-matrix::matrix(int m, int n)
-{
-    //If valid order...
-  if((m>0)&&(n>0))
-  {
-    //store the required order
-    row=m;
-    column=n;
+	//If valid order...
+	if(isOrderValid(rhsRow, rhsColumn)){
 
-        //Create space for mxn elements
-    try
-    {
-      p_mat=new float[row*column];
-    }
-    catch(std::bad_alloc &ba)
-    {
-      std::cout<<"\nAllocation error...";
-      exit(1);
-    }
+		row = rhsRow;
+		column = rhsColumn;
 
-        //initialise all elements to 0
-    for(int i=0;i<m*n;i++)
-      *(p_mat+i)=0;
+		makeMatrix();
 
-  }
+		initializeElements();
 
-  else
-  {
-    //Set p_mat to null
-    p_mat=NULL;
+	}
 
-    //Order = 0x0
-    row=0;
-    column=0;
-  }
+	else
+		resetOrder();
 }
-//End of matrix(int m, int n)
 
 
-matrix::matrix(const matrix &rhs)
-{
-  //If valid matrix...
-  if(rhs.row>0 && rhs.column>0)
-  {
-    //store the required order
-    row=rhs.row;
-    column=rhs.column;
-
-    //Create space for the matrix
-    try
-    {
-      p_mat=new float[row*column];
-    }
-    catch(std::bad_alloc &ba)
-    {
-      std::cout<<"\nAllocation error...";
-      exit(1);
-    }
-
-    //Copy the elements
-    for(int i=0;i<row*column;i++)
-      *(p_mat+i)=*(rhs.p_mat+i);
-
-  }
-
-  else
-  {
-    //Set p_mat to null
-    p_mat=NULL;
-
-    //Order = 0x0
-    row=0;
-    column=0;
-
-  }
-}
-//End of matrix(const matrix &rhs)
+/**
+ * Creates a copy of given matrix if its order is valid, else creates a 0x0 matrix
+ * throws: ALLOCATION_FAILURE
+ */
+matrix::matrix(const matrix& rhs) throw(int){
 
 
-matrix::~matrix()
-{
-    //free the memory
-  delete []p_mat;
+	//If valid matrix...
+	if(isOrderValid(rhs.row, rhs.column)){
+
+		//store the required order
+		row = rhs.row;
+		column = rhs.column;
+
+		//Create space for the matrix
+		makeMatrix();
+
+		//Copy the elements
+		initializeElements(rhs);
+
+	}
+
+	else
+		resetOrder();
 
 }
-//End of ~matrix()
 
 
-void matrix::order_ip(int m, int n)
+
+/**
+ * Creates a matrix and initializes the elements as per the given order
+ * throws: ALLOCATION_FAILURE
+ */
+matrix::matrix(int m, int n, const float *ele_list)
 {
-  //If valid order...
-  if((m>0)&&(n>0))
-  {
-    //Clear previous order
-    delete []p_mat;
 
-    //Store new order
-    row=m;
-    column=n;
+	if(isOrderValid(m, n)){
 
-    try
-    {
-      p_mat=new float[row*column];
-    }
-    catch(std::bad_alloc &ba)
-    {
-      std::cout<<"\nAllocation error...";
-      exit(1);
-    }
+		//store the required order
+		row = m;
+		column = n;
 
-    //initialise all elements to 0
-    for(int i=0;i<m*n;i++)
-      *(p_mat+i)=0;
+		//Create space for mxn elements
+		makeMatrix();
 
-  }
-  else
-  {
-    //Reset previous attributes...
-    //Free previous memory
-    delete []p_mat;
 
-    //Set p_mat to null
-    p_mat=NULL;
 
-    //Order = 0x0
-    row=0;
-    column=0;
-  }
+		for(int i=0;i<m*n;i++)
+			p_mat[i] = ele_list[i];
+
+		//initialise the elements as in the list
+		for(int i=0;i<m*n;i++)
+			p_mat[i] = ele_list[i];
+
+	}
+	else{
+
+		resetOrder();
+	}
 }
-//End of order_ip(int m, int n)
 
 
-void matrix::edit(float new_ele,int m,int n)
-{
-    //check for bounds of the given location
-  if((m<row)&&(n<column)&&(m>=0)&&(n>=0))
-   *(p_mat+m*column+n)=new_ele;
+
+matrix::~matrix(){
+
+	//free the memory
+	delete []p_mat;
 
 }
-//End of edit(float new_ele,int m,int n)
 
 
-void matrix::display(void) const
-{
-  int i,j;
+/**
+ * Returns the row of the matrix
+ */
+int matrix::getRow(){
+	return row;
+}
 
-  std::cout<<"\n";
 
-  for(i=0;i<row;i++)
-  {
-    for(j=0;j<column;j++)
-      std::cout<<*(p_mat+i*column+j)<<"\t";
+/**
+ * Returns the column of the matrix
+ */
+int matrix::getColumn(){
+	return column;
+}
 
-    std::cout<<"\n";
-  }
+
+/**
+ * Changes the order of the matrix. If order is invalid throws INVALID_ORDER exception
+ * throws: ALLOCATION_FAILURE, INVALID_ORDER
+ */
+void matrix::order_ip(int rhsRow, int rhsColumn) throw(int){
+
+	if(!isOrderValid(rhsRow, rhsColumn))
+		throw INVALID_ORDER;
+
+	//Clear previous order
+	delete []p_mat;
+
+	//Store new order
+	row = rhsRow;
+	column = rhsColumn;
+
+	makeMatrix();
+
+	//initialise all elements to 0
+	initializeElements();
 
 }
-//End of display(void)
 
 
-void matrix::mat_ele_ip_user(void)
-{
-  if(p_mat!=NULL)
-  {
-    for(int i=0;i<row*column;i++)
-      std::cin>>*(p_mat+i);
-  }
-}
-//End of mat_ele_ip_user(void)
+/**
+ * Replaces the element at m,n with new_ele. If the m,n is invalid no change is made
+ */
+void matrix::edit(float new_ele, int m, int n){
 
+	//check for bounds of the given location
+	if((m < row) &&
+			(n < column) &&
+			(m >= 0) &&
+			(n >= 0))
 
-matrix matrix::operator+(const matrix &rhs)const
-{
-  //temporary matrix having order same as the caller matrix
-  matrix ans(row,column);
-
-  //Addition to be done only if order of both matrices are same
-  if((rhs.row==row)&&(rhs.column==column)&&(ans.p_mat!=NULL))
-  {
-    for(int i=0;i<(row*column);i++)
-      *(ans.p_mat+i)=*(rhs.p_mat+i)+*(p_mat+i);
-
-    return(ans);
-
-  }
-  else
-  {
-      //returning a matrix of 0x0 helps LHS to take clue to remain unchanged
-    ans.order_ip(0,0);
-
-    return ans;
-  }
+		p_mat[m*column + n] = new_ele;
 
 }
-//End of operator+(const matrix &rhs)
 
 
 
-matrix matrix::operator-(const matrix &rhs)const
-{
-  //temporary matrix having order same as the caller matrix
-  matrix ans(row,column);
+/**
+ * Returns the addition of 2 matrices. If the orders are incompatible throws OPERATION_FAILURE
+ * throws: ALLOCATION_FAILURE, OPERATION_FAILURE
+ */
+matrix matrix::operator+(const matrix &rhs)const throw(int){
 
-  //Subtraction to be done only if order of both matrices are same
-  if((rhs.row==row)&&(rhs.column==column)&&(ans.p_mat!=NULL))
-  {
+	//temporary matrix having order same as the caller matrix
+	matrix ans(row, column);
 
-    for(int i=0;i<(row*column);i++)
-      *(ans.p_mat+i)=*(p_mat+i)-*(rhs.p_mat+i);
+	//Addition to be done only if order of both matrices are same
+	if(!(isOrderValid(rhs.row, rhs.column) && isOrderMatches(rhs.row, rhs.column)))
+		throw OPERATION_FAILURE;
 
-    return(ans);
+	for(int i = 0; i < row*column; i++)
+		ans.p_mat[i]= rhs.p_mat[i] + p_mat[i];
 
-  }
-  else
-  {
-    //returning a matrix of 0x0 helps LHS to take clue to remain unchanged
-    ans.order_ip(0,0);
-
-    return ans;
-  }
-}
-//End of operator-(const matrix &rhs)
-
-
-
-void matrix::operator=(const matrix &rhs)
-{
-    //to handle the case where A=A ie same mtrices and is not an indicator matrix.
-  if(!((this==&rhs)||((rhs.row==0)&&(rhs.column==0))))
-  {
-    //Make LHS matrix order same as RHS matrix
-    if(!((rhs.row==row)&&(rhs.column==column)))
-      order_ip(rhs.row,rhs.column);
-
-    //Assign RHS elements to LHS
-    if(p_mat!=NULL)
-    {
-      for(int i=0;i<(row*column);i++)
-        *(p_mat+i)=*(rhs.p_mat+i);
-    }
-  }
-  //else do nothing
-}
-//End of operator=(const matrix &rhs)
-
-
-matrix operator*(float scalar, const matrix &rhs)
-{
-  //temporary matrix having order same as the multiplicand matrix
-  matrix temp(rhs.row, rhs.column);
-
-  //Multiply each element by the scalar
-  if(temp.p_mat!=NULL)
-  {
-    for(int i=0;i<rhs.row*rhs.column;i++)
-      *(temp.p_mat+i)=(*(rhs.p_mat+i))*scalar;
-  }
-
-  return(temp);
-}
-//End of operator*(float scalar, matrix &rhs)
-
-
-matrix matrix::operator*(float scalar)const
-{
-  //temporary matrix having order same as the multiplicand matrix
-  matrix temp(row, column);
-
-  // temp = scalar * rhs;
-  if(temp.p_mat!=NULL)
-  {
-    for(int i=0;i<row*column;i++)
-      *(temp.p_mat+i)=(*(p_mat+i))*scalar;
-  }
-
-  return(temp);
+	return ans;
 
 }
-//End of operator*(matrix &rhs, float scalar)
+
+
+
+/**
+ * Returns the difference of 2 matrices. If the orders are incompatible throws OPERATION_FAILURE
+ * throws: ALLOCATION_FAILURE, OPERATION_FAILURE
+ */
+matrix matrix::operator-(const matrix &rhs)const{
+
+	//temporary matrix having order same as the caller matrix
+	matrix ans(row, column);
+
+	//Subtraction to be done only if order of both matrices are same
+	if(!(isOrderValid(rhs.row, rhs.column) && isOrderMatches(rhs.row, rhs.column)))
+		throw OPERATION_FAILURE;
+
+	for(int i=0;i<(row*column);i++)
+		ans.p_mat[i] = p_mat[i] - rhs.p_mat[i];
+
+	return ans;
+
+}
+
+
+
+/**
+ * Assigns RHS to LHS. If the RHS is invalid matrix, then OPERATION_FAILURE is thrown
+ * If the RHS and LHS are the same, then no assignment is made
+ * throws: ALLOCATION_FAILURE, OPERATION_FAILURE
+ */
+void matrix::operator=(const matrix &rhs) throw(int){
+
+	//to handle the case where A=A ie same matrices and is not an indicator matrix.
+	if(!(this == &rhs) && isOrderValid(rhs.row, rhs.column))
+	{
+		//Make LHS matrix order same as RHS matrix, if not same
+		if(!isOrderMatches(rhs.row, rhs.column))
+			order_ip(rhs.row,rhs.column);
+
+		//Assign RHS elements to LHS
+		if(isOrderValid(row, column)){
+
+			for(int i = 0; i < row*column; i++)
+				p_mat[i] = rhs.p_mat[i];
+		}
+	}
+	//else do nothing
+}
+
+
+/**
+ * Performs the scalar multiplication result i.e n*[A]
+ * throws: ALLOCATION_FAILURE
+ */
+matrix operator*(float scalar, const matrix &rhs) throw(int){
+
+	//temporary matrix having order same as the multiplicand matrix
+	matrix temp(rhs.row, rhs.column);
+
+	//Multiply each element by the scalar
+	for(int i=0;i<rhs.row*rhs.column;i++)
+		temp.p_mat[i] = scalar * rhs.p_mat[i];
+
+	return(temp);
+}
+
+
+/**
+ * Returns the scalar multiplication result i.e [A]*n
+ * throws: ALLOCATION_FAILURE
+ */
+matrix matrix::operator*(float scalar)const throw(int){
+
+	//temporary matrix having order same as the multiplicand matrix
+	matrix temp(row, column);
+
+	for(int i=0;i<row*column;i++)
+		temp.p_mat[i] = scalar*p_mat[i];
+
+	return(temp);
+
+}
+
 
 
 matrix matrix::operator*(const matrix &rhs)const
 {
-    //temporary matrix having order = row of left multiplicand matrix and column of right multiplicand matrix
-  matrix temp(row, rhs.column);
+	//temporary matrix having order = row of left multiplicand matrix and column of right multiplicand matrix
+	matrix temp(row, rhs.column);
 
-  //Multiplication to be done only of the order criteria is met
-  if((column==rhs.row)&&(temp.p_mat!=NULL))
-  {
-    float res=0;
-    int i,j,k;
+	//Multiplication to be done only of the order criteria is met
+	if(!((column == rhs.row) && temp.isOrderValid(temp.row, temp.column)))
+		throw OPERATION_FAILURE;
 
-    for(i=0;i<row;i++)
-    {
-      for(j=0;j<rhs.column;j++)
-      {
-        for(k=0;k<rhs.row;k++)
-          res=res+((*(p_mat+i*column+k))*(*(rhs.p_mat+k*rhs.column+j)));
+	float res = 0;
+	int i,j,k;
 
-        *(temp.p_mat+i*rhs.column+j)=res;
+	for(i = 0; i < row; i++){
 
-        res=0;
-      }//j loop ends
+		for(j = 0; j < rhs.column; j++){
 
-    }//i loop ends
+			for(k = 0; k < rhs.row; k++){
+				res += (p_mat[i*column + k] * rhs.p_mat[k*rhs.column + j]);
+			}
 
-    return(temp);
+			temp.p_mat[i*rhs.column+j] = res;
 
-  }
-  else
-  {
-    //returning a matrix of 0x0 helps LHS to take clue to remain unchanged
-    temp.order_ip(0,0);
-
-    return temp;
-
-  }
-}
-//End of operator*(const matrix &rhs)
+			res = 0;
 
 
-void matrix::transpose(void)
-{
-  int counter=0,i,j;
-  float temp_var=0;
-  float *temp_mat;
-  try
-  {
-    temp_mat=new float[row*column];
-  }
-  catch(std::bad_alloc &ba)
-  {
-    std::cout<<"\nAllocation error...";
-    exit(1);
-  }
+		}//j loop ends
 
-  for(i=0;i<column;i++)
-    for(j=0;j<row;j++)
-    {
-      *(temp_mat+counter)=*(p_mat+j*column+i);
-      counter++;
-    }
+	}//i loop ends
 
-    for(i=0;i<row*column;i++)
-      *(p_mat+i)=*(temp_mat+i);
-
-    counter=column;
-
-    column=row;
-
-    row=counter;
-
-  }
-//End of transpose(matrix &rhs)
-
-
-  matrix matrix::inverse(void)const
-  {
-    //temporary matrix = input matrix
-    matrix temp_mat(row,row);
-
-  //[I] matrix to calculate the inverse
-    matrix inv(row,column);
-
-  //If square matrix...
-    if((row != 0 && column != 0 && row==column)&&(temp_mat.p_mat!=NULL)&&(inv.p_mat!=NULL))
-    {
-      int i,j,k,m,n,flagger=0;
-      float ratio=0,temp=0,count=0;
-
-    //start by considering answer as [I] matrix.
-      for(i=0;i<row;i++)
-        *(inv.p_mat+i*row+i)=1;
-
-    //the input matrix is used to perform required operations
-      for(i=0;i<row*row;i++)
-        *(temp_mat.p_mat+i)=*(p_mat+i);
-
-
-      for(i=0;i<row;i++)
-      {
-
-        flagger=i;
-
-      //find inverse by Gauss Elimination method.
-      //Consider only the PD elements
-        while(*(temp_mat.p_mat+i*row+i)==0)
-        {
-        //flagger indicates the Max No. of failed attempts of exchanging the diff columns.
-          if(flagger==(row-1))
-          {
-          //returning a matrix of 0x0 helps LHS to take clue to remain unchanged
-            temp_mat.order_ip(0,0);
-
-            return temp_mat;
-          }
-
-          else
-          {
-            flagger++;
-
-          //swap the columns and check again
-            for(k=0;k<row;k++)
-            {
-              temp=*(temp_mat.p_mat+k*row+i);
-              *(temp_mat.p_mat+k*row+i)=*(temp_mat.p_mat+k*row+flagger);
-              *(temp_mat.p_mat+k*row+flagger)=temp;
-
-            //whatever exchanges done to base matrix do similar changes to answer matrix
-              temp=*(inv.p_mat+k*row+i);
-              *(inv.p_mat+k*row+i)=*(inv.p_mat+k*row+flagger);
-              *(inv.p_mat+k*row+flagger)=temp;
-            }
-
-        }//else ends
-
-      } // while ends...repeat till (n-1) columns have been swapped ie max limit
-
-
-      for(j=0;j<row;j++)
-      {
-        if(j!=i)
-          //find the ratio by considering only the PD elements
-          ratio=(*(temp_mat.p_mat+j*row+i))/(*(temp_mat.p_mat+i*row+i));
-
-        else
-          continue;
-
-        for(k=0;k<row;k++)
-        {
-         *(temp_mat.p_mat+j*row+k)=*(temp_mat.p_mat+j*row+k)-(ratio*(*(temp_mat.p_mat+i*row+k)));
-         *(inv.p_mat+j*row+k)=*(inv.p_mat+j*row+k)-(ratio*(*(inv.p_mat+i*row+k)));
-
-        }// k ends
-
-        for(m=0;m<row;m++)
-        {
-          count=0;
-
-          for(n=0;n<row;n++)
-          {
-            //check after every manipulation whether all elements of a row of input matrix are 0.
-            if(*(temp_mat.p_mat+m*row+n)==0)
-              count++;
-
-          }
-
-          //If all elements of a row are 0...
-          if(count==row)
-          {
-            //returning a matrix of 0x0 helps LHS to take clue to remain unchanged
-            temp_mat.order_ip(0,0);
-
-            return temp_mat;
-          }
-
-        }//m loop ends
-
-      }//j ends
-
-    } //i ends
-
-    //Divide each element of a row with corresponding PD element
-    for(i=0;i<row;i++)
-    {
-      for(j=0;j<row;j++)
-      {
-        (*(inv.p_mat+i*row+j))/=(*(temp_mat.p_mat+i*row+i));
-      }
-    }
-
-    return (inv);
-
-
-  }
-  //Return Indicator matrix if not a square matrix
-  else
-  {
-    temp_mat.order_ip(0,0);
-
-    return temp_mat;
-  }
+	return(temp);
 
 }
-//End of inverse()
+
+
+/**
+ * Transposes the matrix
+ * throws: ALLOCATION_FAILURE
+ */
+void matrix::transpose(void) throw(int){
+
+	matrix temp(row, column);
+
+	//transpose
+	for(int i=0;i<column;i++){
+		for(int j=0;j<row;j++){
+			temp.edit(p_mat[j*column+i], i, j);
+		}
+	}
+
+	//make the copy
+	for(int i = 0; i < row*column; i++){
+		p_mat[i] = temp.p_mat[i];
+	}
+
+	//swap order
+	int tempColumn = column;
+	column = row;
+	row = tempColumn;
+
+}
 
 
 
-float matrix::determinant(void)const throw(int)
-{
-  //Exception flag; 0= Invalid matrix, 1= not a square matrix
-  int excep_flag=0;
+/**
+ * Returns the inverse of the matrix. If no inverse exists NO_INVERSE_EXISTS exception is thrown
+ * throws: NO_INVERSE_EXISTS, ALLOCATION_FAILURE
+ */
+matrix matrix::inverse(void)const throw(int){
 
-  //If a valid matrix proceed, else throw exception
-  if(row!=0 && column!=0)
-  {
-    excep_flag = 1;
+	//temporary matrix = input matrix
+	matrix temp_mat(row,row);
 
-    //temporary matrix = input matrix
-    matrix temp_mat(row,row);
+	//[I] matrix to calculate the inverse
+	matrix inv(row,column);
 
-    float determinant_value = 1;
-
-    //Calculate determinant only if square matrix else throw an exception
-    if(row==column)
-    {
-      int i,j,k,m,n,flagger=0;
-      float ratio=0,temp=0,count=0;
-
-      for(i=0;i<row*row;i++)
-        //the input matrix is used to perform required operations
-        *(temp_mat.p_mat+i)=*(p_mat+i);
+	if(!(isOrderValid(row, column) && (row == column)))
+		throw NO_INVERSE_EXISTS;
 
 
-      for(i=0;i<row;i++)
-      {
-        flagger=i;
+	int i, j, k, m, n, flagger = 0;
+	float ratio = 0, temp = 0, count = 0;
 
-        //Consider only the PD elements
-        while(*(temp_mat.p_mat+i*row+i)==0)
-        {
-          if(flagger==(row-1))
-            return 0;
+	//start by considering answer as [I] matrix.
+	for(i=0;i<row;i++)
+		inv.p_mat[i*row+i] = 1;
 
-          else
-          {
-            flagger++;
-
-            for(k=0;k<row;k++)
-            {
-              temp=*(temp_mat.p_mat+k*row+i);
-              *(temp_mat.p_mat+k*row+i)=*(temp_mat.p_mat+k*row+flagger);
-              *(temp_mat.p_mat+k*row+flagger)=temp;
-
-            }
-
-          }//else ends
-
-        } // while ends...repeat till (n-1) columns have been swapped ie max limit
+	//Copy the input matrix is used to perform required operations
+	for(i=0;i<row*row;i++)
+		temp_mat.p_mat[i] = p_mat[i];
 
 
-        for(j=0;j<row;j++)
-        {
-          if(j!=i)
-            //find the ratio by considering only the PD elements.
-            ratio=(*(temp_mat.p_mat+j*row+i))/(*(temp_mat.p_mat+i*row+i));
+	for(i=0; i<row; i++){
 
-          else
-            continue;
+		flagger = i;
 
-          for(k=0;k<row;k++)
-          {
-            *(temp_mat.p_mat+j*row+k)=*(temp_mat.p_mat+j*row+k)-(ratio*(*(temp_mat.p_mat+i*row+k)));
+		//find inverse by Gauss Elimination method.
+		//Consider only the PD elements
+		while(temp_mat.p_mat[i*row + i] == 0){
 
-          }// k ends
+			//flagger indicates the Max No. of failed attempts of exchanging the diff columns.
+			if(flagger == (row - 1)){
 
-          for(m=0;m<row;m++)
-          {
-            count=0;
-            for(n=0;n<row;n++)
-            {
-              if(*(temp_mat.p_mat+m*row+n)==0)
-                count++;
-            }
+				throw NO_INVERSE_EXISTS;
+			}
 
-            if(count==row)
-              return 0;
+			else{
 
-          }//m loop ends
+				flagger++;
 
-        }//j ends
+				//swap the columns and check again
+				for(k=0; k<row; k++){
 
-      } //i ends
+					temp = temp_mat.p_mat[k*row+i];
+					temp_mat.p_mat[k*row+i] = temp_mat.p_mat[k*row+flagger];
+					temp_mat.p_mat[k*row+flagger] = temp;
 
-      for(i=0;i<row;i++)
-      {
-        determinant_value *= ((*(temp_mat.p_mat+i*row+i)));
-      }
+					//whatever exchanges done to base matrix do similar changes to answer matrix
+					temp = inv.p_mat[k*row+i];
+					inv.p_mat[k*row+i] = inv.p_mat[k*row+flagger];
+					inv.p_mat[k*row+flagger] = temp;
+				}
 
-      return (determinant_value);
+			}//else ends
 
-    }
-
-    else
-      throw excep_flag;
-  }
-  else
-    throw excep_flag;
+		} // while ends...repeat till (n-1) columns have been swapped ie max limit
 
 
-}//determinant() ends
+		for(j=0;j<row;j++){
+
+			if(j!=i){
+				//find the ratio by considering only the PD elements
+				ratio = temp_mat.p_mat[j*row+i] / temp_mat.p_mat[i*row+i];
+			}
+			else{
+				continue;
+			}
+
+			for(k=0; k<row; k++){
+
+				temp_mat.p_mat[j*row+k] = temp_mat.p_mat[j*row+k] - ratio * (temp_mat.p_mat[i*row+k]);
+				inv.p_mat[j*row+k] = inv.p_mat[j*row+k] - ratio*(inv.p_mat[i*row+k]);
+
+			}// k ends
+
+			for(m=0; m<row; m++){
+
+				count=0;
+
+				for(n=0;n<row;n++){
+
+					//check after every manipulation whether all elements of a row of input matrix are 0.
+					if(temp_mat.p_mat[m*row+n] == 0)
+						count++;
+
+				}
+
+				//If all elements of a row are 0...
+				if(count == row){
+
+					throw NO_INVERSE_EXISTS;
+				}
+
+			}//m loop ends
+
+		}//j ends
+
+	} //i ends
+
+	//Divide each element of a row with corresponding PD element
+	for(i=0;i<row;i++){
+
+		for(j=0;j<row;j++){
+			inv.p_mat[i*row+j] /= temp_mat.p_mat[i*row+i];
+		}
+	}
+
+	return (inv);
+
+}
+
+/**
+ * Returns the determinant of the matrix
+ * throws: ALLOCATION_FAILURE, OPERATION_FAILURE, DETERMINANT_ZERO
+ */
+float matrix::determinant(void)const throw(int){
+
+	//Calculate determinant only if square matrix else throw an exception
+	if(!isOrderValid(row, column)){
+		throw OPERATION_FAILURE;
+	}
+
+
+	//temporary matrix = input matrix
+	matrix temp_mat(row,row);
+
+	float determinant_value = 1;
+
+
+	int i,j,k,m,n,flagger=0;
+	float ratio=0,temp=0,count=0;
+
+	for(i=0;i<row*row;i++)
+		//the input matrix is used to perform required operations
+		temp_mat.p_mat[i] = p_mat[i];
+
+
+	for(i=0;i<row;i++)
+	{
+		flagger=i;
+
+		//Consider only the PD elements
+		while(temp_mat.p_mat[i*row+i] == 0)
+		{
+			if(flagger == (row-1))
+				return 0;
+
+			else
+			{
+				flagger++;
+
+				for(k=0;k<row;k++)
+				{
+					temp = temp_mat.p_mat[k*row+i];
+					temp_mat.p_mat[k*row+i] = temp_mat.p_mat[k*row+flagger];
+					temp_mat.p_mat[k*row+flagger] = temp;
+				}
+
+			}//else ends
+
+		} // while ends...repeat till (n-1) columns have been swapped ie max limit
+
+
+		for(j=0;j<row;j++)
+		{
+			if(j!=i)
+				//find the ratio by considering only the PD elements.
+				ratio = temp_mat.p_mat[j*row+i] / temp_mat.p_mat[i*row+i];
+
+			else
+				continue;
+
+			for(k=0;k<row;k++)
+			{
+				temp_mat.p_mat[j*row+k] -= ratio* temp_mat.p_mat[i*row+k];
+
+			}// k ends
+
+			for(m=0;m<row;m++)
+			{
+				count=0;
+				for(n=0;n<row;n++)
+				{
+					if(temp_mat.p_mat[m*row+n]==0)
+						count++;
+				}
+
+				if(count==row)
+					return 0;
+
+			}//m loop ends
+
+		}//j ends
+
+	} //i ends
+
+	for(i=0;i<row;i++)
+	{
+		determinant_value *= temp_mat.p_mat[i*row+i];
+	}
+
+	return (determinant_value);
+
+}
 
 
 
-matrix matrix::covariance(void)const
-{
-  //covariance matrix is a square matrix
-  matrix temp_mat(column,column);
-  float *mean_ptr;
-  if((row!=0 && column!=0) && (temp_mat.p_mat != NULL))
-  {
-    try
-    {
-      mean_ptr = new float[column];
-    }
-    catch(std::bad_alloc &ba)
-    {
-      std::cout<<"\nAllocation error...";
-      exit(1);
-    }
+/**
+ * Returns the convariance of a matrix
+ * throws: ALLOCATION_FAILURE
+ */
 
-    int i,j,k;
+matrix matrix::covariance(void)const throw(int)	{
 
-    //proceed further only if enough memory is available
-    for(i=0; i<column; i++)
-    {
-      *(mean_ptr+i)=0;
+	//covariance matrix is a square matrix
+	matrix temp_mat(column,column);
+	float *mean_ptr;
 
-      for(j=0; j<row; j++)
-      {
-        *(mean_ptr+i) += *(p_mat+j*column+i);
-      }
+	if(!(isOrderValid(row, column) && temp_mat.isOrderValid(temp_mat.row, temp_mat.column)))
+		throw INVALID_ORDER;
 
-      //Store mean for each column
-      *(mean_ptr+i) /= row;
-    }
+	try{
+		mean_ptr = new float[column];
+	}
+	catch(std::bad_alloc &ba){
+		throw ALLOCATION_FAILURE;
+	}
 
-    //Find covariance for ith and jth columns
-    for(i=0; i<column; i++)
-    {
-      for(j=0; j<column; j++)
-      {
-        *(temp_mat.p_mat+i*column+j)=0;
+	int i,j,k;
 
-        for(k=0; k<row; k++)
-        {
-          *(temp_mat.p_mat+i*column+j) +=  (*(p_mat+k*column+i) - *(mean_ptr+i))*(*(p_mat+k*column+j) - *(mean_ptr+j));
+	//proceed further only if enough memory is available
+	for(i=0; i<column; i++){
 
-        }
+		mean_ptr[i]=0;
 
-        *(temp_mat.p_mat+i*column+j) /= row;
-      }
-    }
+		for(j=0; j<row; j++){
 
-    return (temp_mat);
+			mean_ptr[i] += p_mat[j*column+i];
+		}
 
-  }
-  else
-  {
-    //returning a matrix of 0x0 helps LHS to take clue to remain unchanged
-    temp_mat.order_ip(0,0);
+		//Store mean for each column
+		mean_ptr[i] /= row;
+	}
 
-    return temp_mat;
-  }
+	//Find covariance for ith and jth columns
+	for(i=0; i<column; i++)	{
+
+		for(j=0; j<column; j++)	{
+
+			temp_mat.p_mat[i*column+j] = 0;
+
+			for(k=0; k<row; k++){
+
+				temp_mat.p_mat[i*column+j] +=  (p_mat[k*column+i] - mean_ptr[i]) * (p_mat[k*column+j] - mean_ptr[j]);
+			}
+
+			temp_mat.p_mat[i*column+j] /= row;
+		}
+	}
+
+	return (temp_mat);
+
 
 
 
 }//covariance() ends
 
 
+/**
+ * Returns the matrix appended  (horizontally, at the end) with the given matrix
+ * throws: ALLOCATION_FAILURE, INVALID_ORDER
+ */
+matrix matrix::append_h(const matrix &mat_right)const throw(int){
+	/*//temporary martix
+	matrix temp;
 
-matrix matrix::append_h(const matrix &mat_right)const
-{
-  //temporary martix
-  matrix temp;
+	//index for left matrix elements
+	int i=0;
 
-  //index for left matrix elements
-  int i=0;
+	//index for right matrix elements
+	int j=0;
 
-  //index for right matrix elements
-  int j=0;
+	int iter=0;
 
-  int iter=0;
+	//flag to keep track when each row of the matrix is iver
+	int temp_col_left=0;
 
-  //flag to keep track when each row of the matrix is iver
-  int temp_col_left=0;
+	//flag to keep track when each row of the matrix is iver
+	int temp_col_right=0;
 
-  //flag to keep track when each row of the matrix is iver
-  int temp_col_right=0;
+	//check for order compatibility before appending
+	if(!(isOrderValid(row, column) && row == mat_right.row))
+		throw INVALID_ORDER;
 
-  //check for order compatibility before appending
-  if(row!=0 && column!=0 && row == mat_right.row)
-  {
-    //reorder temp matrix
-    temp.order_ip((mat_right.row),(column +mat_right.column));
 
-    //no. of elements in appended matrix
-    iter = (mat_right.row)*(column +mat_right.column);
+	//reorder temp matrix
+	temp.order_ip((mat_right.row),(column + mat_right.column));
 
-    while((i+j)<iter)
-    {
-      if(temp_col_left < column)
-      {
-        //copy the left matrix's elements
-        *(temp.p_mat +i+j)= *(p_mat +i);
-        i++;
-        temp_col_left++;
-        //temp.p_mat++;
-      }
-      else if(temp_col_right < mat_right.column)
-      {
-        //copy right elements
-        *(temp.p_mat +i+j)= *(mat_right.p_mat +j);
-        j++;
-        temp_col_right++;
-        //temp.p_mat++;
+	//no. of elements in appended matrix
+	iter = (mat_right.row)*(column + mat_right.column);
 
-      }
-      else
-      {
-        //reset the temp column counters
-        temp_col_left =0;
-        temp_col_right =0;
+	while((i+j) < iter){
 
-      }
-    }
+		if(temp_col_left < column){
 
-    return(temp);
-  }
+			//copy the left matrix's elements
+			temp.p_mat[i+j] = p_mat[i];
+			i++;
+			temp_col_left++;
+		}
+		else if(temp_col_right < mat_right.column){
 
-  //return an indicator matrix to signal no change on LHS matrix
-  else
-  {
-    temp.order_ip(0,0);
-    return(temp);
-  }
+			//copy right elements
+	 *(temp.p_mat +i+j)= *(mat_right.p_mat +j);
+			j++;
+			temp_col_right++;
+		}
+		else{
 
+			//reset the temp column counters
+			temp_col_left =0;
+			temp_col_right =0;
+
+		}
+	}
+
+	return(temp);
+	 */
+
+	//check for order compatibility before appending
+	if(!(isOrderValid(row, column) && row == mat_right.row))
+		throw INVALID_ORDER;
+
+	matrix temp(row + mat_right.row, column + mat_right.column);
+
+
+	for(int i=0; i < row; i++){
+
+		for(int j=0; j<column; j++){
+
+			temp.p_mat[i*mat_right.row + j] = p_mat[i*row + j];
+		}
+	}
+
+	for(int i=0; i<mat_right.row; i++){
+
+		for(int j=0; j<mat_right.column; j++){
+
+			temp.p_mat[i*mat_right.row + column + j] = mat_right.p_mat[i*mat_right.row + j];
+		}
+	}
+
+	return temp;
 }//append_h() ends
 
 
 
-matrix matrix::append_v(const matrix &mat_down)const
-{
-  //temporary martix
-  matrix temp;
+/**
+ * Returns the matrix appended  (vertically, at the bottom) with the given matrix
+ * throws: ALLOCATION_FAILURE, INVALID_ORDER
+ */
+matrix matrix::append_v(const matrix &mat_down)const throw(int)	{
 
-  //index for left matrix elements
-  int i=0;
+	//check for order compatibility before appending
+	if(!(isOrderValid(row, column) && column == mat_down.column))
+		throw INVALID_ORDER;
 
-  //flag to keep track when each row of the matrix is iver
-  int temp_col_top=0;
 
-  //check for order compatibility before appending
-  if(row!=0 && column!=0 && column == mat_down.column)
-  {
-    //reorder temp matrix
-    temp.order_ip((row +mat_down.row),(mat_down.column));
+	//reorder temp matrix
+	matrix temp((row +mat_down.row), (mat_down.column));
 
-    for(i=0;i<(row*column);i++)
-    {
-      *(temp.p_mat + i) = *(p_mat +i);
-    }
+	for(int i=0;i<(row*column);i++)	{
 
-    for(i=0;i<(mat_down.row *mat_down.column);i++)
-    {
-      *(temp.p_mat + (row*column)+i) = *(mat_down.p_mat +i);
-    }
+		temp.p_mat[i] = p_mat[i];
+	}
 
-    return(temp);
-  }
+	for(int i=0; i<(mat_down.row *mat_down.column);i++)	{
 
-  //return an indicator matrix to signal no change on LHS matrix
-  else
-  {
-    temp.order_ip(0,0);
-    return(temp);
-  }
+		temp.p_mat[(row*column) + i] = mat_down.p_mat[i];
+	}
+
+	return(temp);
 
 }//append_v() ends
 
 
+/**
+ * Performs the shorthand addition operation i.e adds and assigns to the matrix
+ * throws: INVALID_ORDER, OPERATION_FAILURE, ALLOCATION_FAILURE
+ */
+void matrix::operator+=(const matrix &rhs) throw(int){
 
-void matrix::operator+=(const matrix &rhs)
-{
-  if(p_mat != NULL && rhs.p_mat != NULL)
-  {
-    if(row==rhs.row && column == rhs.column)
-    {
-      *this= *this + rhs;
-    }
-  }
+	if(!(isOrderValid(row, column) && rhs.isOrderValid(rhs.row, rhs.column)))
+		throw INVALID_ORDER;
+
+	if(!(isOrderMatches(rhs.row, rhs.column)))
+		throw OPERATION_FAILURE;
+
+	*this = *this + rhs;
 
 }//operator+=() ends
 
 
 
-void matrix::operator-=(const matrix &rhs)
-{
-  if(p_mat != NULL && rhs.p_mat != NULL)
-  {
-    if(row==rhs.row && column == rhs.column)
-    {
-      *this= *this - rhs;
-    }
-  }
+/**
+ * Performs the shorthand subtraction operation i.e subtracts and assigns to the matrix
+ * throws: INVALID_ORDER, OPERATION_FAILURE, ALLOCATION_FAILURE
+ */
+void matrix::operator-=(const matrix &rhs) throw(int){
+
+	if(!(isOrderValid(row, column) && rhs.isOrderValid(rhs.row, rhs.column)))
+		throw INVALID_ORDER;
+
+	if(!(isOrderMatches(rhs.row, rhs.column)))
+		throw OPERATION_FAILURE;
+
+	*this= *this - rhs;
 
 }//operator-=() ends
 
 
 
-void matrix::operator*=(const matrix &rhs)
-{
-  if(p_mat != NULL && rhs.p_mat != NULL)
-  {
-    if(column==rhs.row)
-    {
-      *this = (*this) * rhs;
-    }
-  }
+/**
+ * Performs the shorthand multiplication operation i.e multiplies and assigns to the matrix
+ * throws: INVALID_ORDER, OPERATION_FAILURE, ALLOCATION_FAILURE
+ */
+void matrix::operator*=(const matrix &rhs){
+
+	if(!(isOrderValid(row, column) && rhs.isOrderValid(rhs.row, rhs.column)))
+		throw INVALID_ORDER;
+
+	if(!(column == rhs.row))
+		throw OPERATION_FAILURE;
+
+	*this = (*this) * rhs;
 
 }//operator*=() ends
 
 
+/**
+ * Performs the shorthand multiplication operation i.e multiplies and assigns to the matrix
+ * throws: INVALID_ORDER, OPERATION_FAILURE
+ */
+void matrix::operator*=(const float n){
 
-void matrix::operator*=(const float n)
-{
-  if(p_mat != NULL)
-  {
-    *this = (*this)*n;
-  }
+	if(!isOrderValid(row, column))
+		throw INVALID_ORDER;
+
+	*this = (*this)*n;
 
 }//operator*=() ends
 
 
+/**
+ * Returns true if order and elements match, else returns false
+ */
+bool matrix::operator==(const matrix &rhs)const{
+	bool flag = true;
 
-bool matrix::operator==(const matrix &rhs)const
-{
-  int i;
+	//Check for orders
+	if(column == rhs.column && row == rhs.row)
+	{
+		//Check for elements
+		for(int i=0;i<(row*column);i++)
+			if(*(p_mat + i) != *(rhs.p_mat + i))
+			{
+				flag = false;
+				break;
+			}
 
-  bool flag = true;
+		return flag;
+	}
 
-  //Check for orders
-  if(column == rhs.column && row == rhs.row)
-  {
-    //Check for elements
-    for(i=0;i<(row*column);i++)
-      if(*(p_mat + i) != *(rhs.p_mat + i))
-      {
-        flag = false;
-        break;
-      }
-
-      return flag;
-    }
-
-  //return false if order mismatch
-    else
-      return false;
+	//return false if order mismatch
+	else
+		return false;
 
 }//operator==() ends
 
 
-float matrix::get_element(int rhs_row, int rhs_column)const throw(int)
-{
-  int excep_flag =0;
+/**
+ * Returns the element of the matrix specified by row and column (0-based)
+ * throws: INVALID_ORDER, OPERATION_FAILURE
+ */
+float matrix::get_element(int rhs_row, int rhs_column)const throw(int){
 
-  //Check for position validity and also marix's validity; else throw exception
-  if(rhs_row >= 0 && rhs_row < row && rhs_column >= 0 && rhs_column < column && p_mat != NULL)
-  {
-    //return the required element
-    return(*(p_mat + rhs_row*row + rhs_column));
-  }
-  else
-    throw excep_flag;
+	if(!isOrderValid(row, column))
+		throw INVALID_ORDER;
+
+	//Check for position validity and also marix's validity; else throw exception
+	if(rhs_row >= 0 && rhs_row < row && rhs_column >= 0 && rhs_column < column){
+
+		//return the required element
+		return p_mat[rhs_row*column + rhs_column];
+	}
+	else
+		throw OPERATION_FAILURE;
 
 }//get_element() ends
 
 
-void matrix::mat_ele_ip_list(const float *ele_list)
-{
-  if(p_mat!=NULL)
-  {
-    for(int i=0;i<row*column;i++)
-      *(p_mat+i) = *(ele_list+i);
-  }
+/**
+ * Edits all the elements of the matrix
+ * throws: INVALID_ORDER
+ */
+void matrix::mat_ele_ip_list(const float *ele_list){
+
+	if(!isOrderValid(row, column))
+		throw INVALID_ORDER;
+
+	for(int i=0;i<row*column;i++){
+		p_mat[i] = ele_list[i];
+	}
+
 
 }//mat_ele_ip_list() ends
 
 
-matrix::matrix(int m, int n, const float *ele_list)
-{
-  //If valid order...
-  if((m>0)&&(n>0))
-  {
-    //store the required order
-    row=m;
-    column=n;
+bool matrix::isOrderMatches(int rhsRow, int rhsColumn)const{
+	return((row == rhsRow) &&
+			(column == rhsColumn));
+}
 
-        //Create space for mxn elements
-    try
-    {
-      p_mat=new float[row*column];
-    }
-    catch(std::bad_alloc &ba)
-    {
-      std::cout<<"\nAllocation error...";
-      exit(1);
-    }
+bool matrix::isOrderValid(int rhsRow, int rhsColumn)const{
+	return((rhsRow > 0) &&
+			(rhsColumn > 0));
+}
 
-    //initialise the elements as in the list
-    for(int i=0;i<m*n;i++)
-      *(p_mat+i) = *(ele_list + i);
+void matrix::makeMatrix() throw(int){
+	try	{
+		p_mat=new float[row*column];
+	}
+	catch(std::bad_alloc &ba){
+		throw ALLOCATION_FAILURE;
+	}
 
-  }
-  else
-  {
-    //Set p_mat to null
-    p_mat=NULL;
+}
 
-    //Order = 0x0
-    row=0;
-    column=0;
-  }
+void matrix::initializeElements(){
+	for(int i = 0; i < row*column; i++)
+		p_mat[i]=0;
+}
+
+void matrix::initializeElements(const matrix& rhs){
+	for(int i = 0; i < row*column; i++)
+		p_mat[i]=rhs.p_mat[i];
+}
+
+void matrix::resetOrder(){
+	p_mat=NULL;
+
+	//Reset order
+	row=0;
+	column=0;
 }
